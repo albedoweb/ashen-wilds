@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ashen Wilds</title>
+<meta name="description" content="A short dark-fantasy tale of revenge in the browser. Follow her signs through an endless dark, grow strong enough to face Morhain, but not so strong that you fall. Three endings.">
+<meta property="og:title" content="Ashen Wilds">
+<meta property="og:description" content="A short dark-fantasy tale of revenge. Every level makes you stronger, and less human.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://albedoweb.github.io/ashen-wilds/">
+<meta property="og:image" content="https://albedoweb.github.io/ashen-wilds/og.png">
+<meta name="theme-color" content="#050407">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%23050407'/%3E%3Cpath fill='%23c2380e' d='M7 3h2v1h1v2h1v3h1v3h-1v1h-1v1H6v-1H5v-1H4V9h1V7h1V5h1z'/%3E%3Cpath fill='%23ff8a2a' d='M8 6h1v2h1v3H9v1H7v-1H6V9h1V7h1z'/%3E%3Cpath fill='%23ffe7a0' d='M8 9h1v2H7v-1h1z'/%3E%3Cpath fill='%234474d8' d='M2 13h2v1h2v1H2z'/%3E%3C/svg%3E">
+<script>
+  // Cloudflare Web Analytics, only on the published site; local runs send nothing
+  if (location.hostname === 'albedoweb.github.io') {
+    var beacon = document.createElement('script');
+    beacon.defer = true;
+    beacon.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+    beacon.setAttribute('data-cf-beacon', '{"token": "c5500937997a4c069c9642743f20e830"}');
+    document.head.appendChild(beacon);
+  }
+</script>
+<style>
+  :root { --ink: #e3d2a8; --dim: #8a7a5a; --blood: #b0242a; --ember: #ff8a4a; --bg: #050407; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+  body { font-family: Georgia, 'Times New Roman', serif; color: var(--ink); }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+  #game { display: block; position: absolute; left: 0; top: 0; }
+  .px { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+
+  /* ---------- HUD: top-left plate */
+  #hud { position: fixed; left: 14px; top: 12px; display: flex; gap: 10px; align-items: flex-start; pointer-events: none; text-shadow: 0 1px 3px #000; }
+  #heartBox { position: relative; width: 52px; height: 46px; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 45%, rgba(40,10,12,.75), rgba(5,4,7,.0) 70%); }
+  #heart { width: 39px; height: 33px; }
+  #heartBox.warn #heart { animation: dread 1.6s ease-in-out infinite; }
+  #heartBox.pulse #heart { animation: dreadHard .5s ease-in-out 6; }
+  @keyframes dread { 50% { filter: drop-shadow(0 0 6px rgba(255,40,20,.9)); transform: scale(1.06); } }
+  @keyframes dreadHard { 50% { filter: drop-shadow(0 0 12px rgba(255,30,10,1)) brightness(1.6); transform: scale(1.18); } }
+  #hum { position: absolute; bottom: -6px; left: 0; right: 0; text-align: center; font-size: 10px; letter-spacing: .1em; color: var(--dim); }
+  #plate { width: 230px; }
+  #rungName { font-size: 15px; font-variant: small-caps; letter-spacing: .12em; color: #d9c49a; line-height: 1.1; margin: 1px 0 5px; }
+  #rungName b { color: #c23a2a; font-weight: normal; }
+  .bar { position: relative; height: 9px; background: rgba(8,5,6,.85); border: 1px solid #4a3a2c; box-shadow: 0 0 0 1px rgba(0,0,0,.6); }
+  .bar i, .bar u { position: absolute; left: 0; top: 0; bottom: 0; display: block; }
+  #hpBar i { background: linear-gradient(#c8343a, #7a1418); width: 100%; z-index: 2; transition: width .12s; }
+  #hpBar u { background: #e8c8a0; opacity: .55; width: 100%; z-index: 1; transition: width .6s .25s; }
+  #hpBar span { position: absolute; right: 4px; top: -1px; font-size: 9px; line-height: 11px; color: #f0e0c8; z-index: 3; font-family: ui-monospace, Menlo, monospace; }
+  #xpRow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+  #lvl { font-size: 12px; color: #d9c49a; min-width: 34px; font-variant: small-caps; letter-spacing: .06em; }
+  #xpBar { flex: 1; height: 4px; border-color: #3a2e24; }
+  #xpBar i { background: linear-gradient(90deg, #8a6a3a, #e0b060); width: 0; transition: width .3s; }
+  #xpBar.damn i { background: linear-gradient(90deg, #5a0a0a, #ff3a1a); }
+  /* Ilse's ribbon: direction of the last sign, live warmth */
+  #ribbon { position: fixed; right: 10px; top: 6px; width: 96px; text-align: center; pointer-events: none; opacity: 0; transition: opacity 1.2s; text-shadow: 0 1px 3px #000; }
+  #ribbon.show { opacity: 1; }
+  #ribbonCv { width: 90px; height: 90px; margin: 0 auto; }
+  #ribbonWord { font-size: 14px; font-variant: small-caps; letter-spacing: .2em; margin-top: -4px; transition: color .6s; }
+  #ribbon small { display: block; font-size: 9px; letter-spacing: .25em; color: #6a5e48; font-variant: small-caps; }
+  #ribbon.flare #ribbonCv { animation: flare 1.4s ease-out; }
+  #ribbon.flare #ribbonWord { animation: flareWord 1.4s ease-out; }
+  @keyframes flare { 15% { transform: scale(1.35); filter: brightness(2.2); } }
+  @keyframes flareWord { 15% { transform: scale(1.3); filter: brightness(1.8); } }
+  #msg.ribbon { color: #b8ccff; text-shadow: 0 0 10px rgba(80,120,255,.5), 0 2px 6px #000; }
+  /* pause */
+  #pause { background: rgba(5,4,7,.84); z-index: 20; }
+  #pause h1 { font-size: 42px; font-weight: normal; font-variant: small-caps; letter-spacing: .3em; color: #e3d2a8; margin: 0 0 .6em; }
+  #pause dl { display: grid; grid-template-columns: auto auto; gap: 4px 18px; font-size: 15px; margin: 0 0 1.4em; text-align: left; }
+  #pause dt { color: #d9c49a; text-align: right; font-variant: small-caps; letter-spacing: .08em; } #pause dd { margin: 0; color: #a89878; }
+  #pauseTrail { font-style: italic; color: #c8b898; max-width: 720px; }
+  body.paused #msg, body.paused #card, body.paused #levelUp, body.paused #help { visibility: hidden; } #pauseTrail em { font-style: normal; font-variant: small-caps; letter-spacing: .08em; color: #e8d8b8; }
+  #pbtn { display: none; }
+  body.touch #pbtn { display: block; position: fixed; right: 104px; top: 14px; width: 40px; height: 40px; border-radius: 50%; background: rgba(10,6,8,.7); border: 1px solid #5a4632; pointer-events: auto; }
+  body.touch #pbtn::before, body.touch #pbtn::after { content: ''; position: absolute; top: 12px; width: 5px; height: 16px; background: #d9c49a; }
+  body.touch #pbtn::before { left: 13px; } body.touch #pbtn::after { right: 13px; }
+
+  /* ---------- place name, coords */
+  #biome { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); font-size: 22px; font-variant: small-caps; letter-spacing: .18em; color: #e3d2a8; opacity: 0; transition: opacity 1.4s; pointer-events: none; text-shadow: 0 2px 6px #000; white-space: nowrap; }
+  #coords { position: fixed; left: 14px; bottom: 10px; font-size: 11px; color: #6a5e48; pointer-events: none; letter-spacing: .04em; }
+  #debug { position: fixed; left: 14px; bottom: 26px; font: 11px ui-monospace, Menlo, monospace; color: #ff8080; pointer-events: none; white-space: pre; }
+
+  /* ---------- ability slots */
+  #slots { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; pointer-events: none; }
+  .slot { position: relative; width: 44px; height: 44px; background: rgba(10,6,8,.8); border: 1px solid #5a4632; box-shadow: inset 0 0 8px #000, 0 0 0 1px rgba(0,0,0,.7); overflow: hidden; }
+  .slot canvas { width: 36px; height: 36px; margin: 4px; }
+  .slot kbd { position: absolute; right: 2px; bottom: 0; font: 11px Georgia, serif; color: #d9c49a; text-shadow: 0 0 3px #000, 0 0 2px #000; }
+  .slot .sweep { position: absolute; inset: 0; background: conic-gradient(rgba(0,0,0,.78) calc(var(--p, 0) * 1turn), transparent 0); }
+  .slot .cdt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 13px ui-monospace, Menlo, monospace; color: #e8d8b8; text-shadow: 0 0 3px #000; }
+  .slot.locked { border-color: #2a221c; }
+  .slot.locked canvas { opacity: .12; filter: grayscale(1); }
+  .slot.locked kbd { color: #4a3e30; }
+  .slot.ready { border-color: #8a5a32; box-shadow: inset 0 0 8px #000, 0 0 6px rgba(255,120,40,.25); }
+  .slot.active { border-color: #ff3a1a; box-shadow: inset 0 0 10px rgba(255,30,10,.6), 0 0 10px rgba(255,30,10,.7); animation: act .5s ease-in-out infinite alternate; }
+  .slot.unlocked { animation: unlock 1.2s ease-out 2; }
+  @keyframes act { to { box-shadow: inset 0 0 14px rgba(255,30,10,.8), 0 0 16px rgba(255,30,10,.9); } }
+  @keyframes unlock { 40% { box-shadow: 0 0 18px rgba(255,90,40,1); border-color: #ffb070; } }
+  #atk { display: none; }
+
+  /* ---------- touch controls */
+  body.touch #slots { left: auto; right: 16px; bottom: 112px; transform: none; flex-direction: column; pointer-events: auto; }
+  body.touch .slot { width: 56px; height: 56px; border-radius: 50%; }
+  body.touch .slot canvas { width: 40px; height: 40px; margin: 8px; }
+  body.touch .slot kbd { display: none; }
+  body.touch #atk { display: block; position: fixed; right: 84px; bottom: 22px; width: 84px; height: 84px; border-radius: 50%; background: rgba(40,10,12,.6); border: 1px solid #7a4a32;
+    box-shadow: inset 0 0 14px #000; pointer-events: auto; }
+  body.touch #atk::after { content: ''; position: absolute; left: 50%; top: 50%; width: 30px; height: 4px; background: #d9c49a; transform: translate(-50%,-50%) rotate(-45deg); box-shadow: 0 0 6px rgba(255,180,120,.6); }
+  body.touch #atk.down { background: rgba(120,20,20,.7); }
+  body.touch #help { display: none; }
+  body.touch #slots { gap: 10px; }
+  #stick, #knob { position: fixed; border-radius: 50%; pointer-events: none; display: none; transform: translate(-50%, -50%); }
+  #stick { width: 110px; height: 110px; border: 2px solid rgba(201,185,154,.25); background: rgba(0,0,0,.2); }
+  #knob { width: 44px; height: 44px; background: rgba(201,185,154,.3); }
+
+  /* ---------- boss bar */
+  #boss { position: fixed; top: 54px; left: 50%; transform: translateX(-50%); width: min(560px, 70vw); text-align: center; opacity: 0; transition: opacity .8s; pointer-events: none; }
+  #boss.show { opacity: 1; }
+  #boss .name { font-size: 17px; font-variant: small-caps; letter-spacing: .2em; color: #d8c0e8; text-shadow: 0 0 8px rgba(160,80,255,.6), 0 2px 4px #000; margin-bottom: 4px; }
+  #bossBar { height: 8px; border-color: #4a3458; }
+  #bossBar i { background: linear-gradient(#9a3ad0, #4a0a70); width: 100%; z-index: 2; transition: width .12s; }
+  #bossBar u { background: #f0d8ff; opacity: .5; width: 100%; z-index: 1; transition: width .7s .25s; }
+  #bossBar b { position: absolute; top: -3px; bottom: -3px; width: 1px; background: #e8d0ff; z-index: 3; box-shadow: 0 0 3px #a050ff; }
+
+  /* ---------- damnation frame */
+  #frame { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity 2s; box-shadow: inset 0 0 90px 10px rgba(90,0,0,.75); }
+  #frame.l7 { opacity: .55; animation: breathe 3.2s ease-in-out infinite; }
+  #frame.l8 { opacity: 1; box-shadow: inset 0 0 140px 30px rgba(120,0,0,.85); animation: breathe 1.6s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .35; } }
+
+  /* ---------- messages */
+  #msg { position: fixed; left: 50%; top: 24%; transform: translateX(-50%); width: min(84vw, 720px); text-align: center; color: #efe2c0; font: italic 20px/1.45 Georgia, serif; text-shadow: 0 2px 8px #000, 0 0 2px #000; pointer-events: none; opacity: 0; transition: opacity .8s; }
+  #msg.voice { color: #d8b8ff; text-shadow: 0 0 10px rgba(140,60,255,.6), 0 2px 6px #000; }
+  #msg.warn { color: #ff9a7a; }
+  #card { position: fixed; left: 50%; top: 30%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; opacity: 0; transition: opacity 1.2s; width: min(90vw, 760px); }
+  #card .over { font-size: 13px; letter-spacing: .5em; color: #8a6a5a; font-variant: small-caps; }
+  #card h2 { margin: 6px 0 4px; font-size: 46px; font-weight: normal; font-variant: small-caps; letter-spacing: .14em; color: #d8442e; text-shadow: 0 0 18px rgba(255,40,20,.55), 0 3px 8px #000; }
+  #card .rule { width: 340px; max-width: 70vw; height: 1px; margin: 4px auto 10px; background: linear-gradient(90deg, transparent, #8a2a1a, transparent); }
+  #card p { margin: 0; font: italic 20px/1.4 Georgia, serif; color: #e8d6b8; text-shadow: 0 2px 6px #000; }
+  #card.ominous h2 { color: #8a0a0a; font-size: 30px; letter-spacing: .1em; }
+  #levelUp { position: fixed; left: 50%; top: 62%; transform: translateX(-50%); font-size: 22px; font-variant: small-caps; letter-spacing: .3em; color: #ffd8a0; text-shadow: 0 0 12px rgba(255,170,80,.8), 0 2px 4px #000; opacity: 0; pointer-events: none; transition: opacity .5s; white-space: nowrap; }
+  #levelUp::before, #levelUp::after { content: '\2014\00a0'; color: #8a5a32; }
+  #levelUp::after { content: '\00a0\2014'; }
+  #help { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); color: #a89878; font-size: 13px; opacity: 0; transition: opacity 2.5s; pointer-events: none; text-align: center; text-shadow: 0 1px 3px #000; white-space: nowrap; }
+
+  /* ---------- title */
+  #title { background: radial-gradient(ellipse at 50% 46%, rgba(5,4,7,.35), rgba(5,4,7,.9) 72%); padding: 0 6vw; }
+  #title .tt { font-size: clamp(44px, 9vw, 104px); font-variant: small-caps; letter-spacing: .14em; color: #f2d6a0; margin: 0; line-height: 1;
+    text-shadow: 0 0 18px rgba(255,110,30,.55), 0 0 60px rgba(255,60,10,.35), 0 4px 10px #000; animation: titleIn 2.4s ease-out both, ember 4s 2.4s ease-in-out infinite; }
+  @keyframes titleIn { from { opacity: 0; letter-spacing: .3em; filter: blur(6px); } }
+  @keyframes ember { 50% { text-shadow: 0 0 24px rgba(255,120,40,.75), 0 0 80px rgba(255,60,10,.45), 0 4px 10px #000; } }
+  #title .orn { width: 66px; height: 10px; margin: 18px auto 14px; animation: fadeIn 2s .8s both; }
+  #title .tag { font-style: italic; font-size: clamp(16px, 2.2vw, 21px); color: #e8d6b8; margin: 0; max-width: 640px; animation: fadeIn 2s 1s both; }
+  #title .desc { margin: 22px 0 0; font-size: 15px; line-height: 1.65; color: #b8a888; max-width: 560px; animation: fadeIn 2s 1.5s both; }
+  #title .keys { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: center; margin: 26px 0 0; font-size: 13px; color: #8a7a5a; max-width: 680px; animation: fadeIn 2s 2s both; }
+  #title .keys b { font-weight: normal; color: #d9c49a; font-variant: small-caps; letter-spacing: .06em; }
+  #title small { margin-top: 34px; animation-delay: 2.6s, 4.2s; }
+  #title .tap { display: none; } @media (hover: none) { #title .tap { display: inline; } #title .press { display: none; } }
+  #title footer { position: absolute; bottom: 12px; left: 0; right: 0; font-size: 11px; letter-spacing: .3em; color: #4a4030; font-variant: small-caps; }
+  #title .embers { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  #title .embers i { position: absolute; bottom: -10px; width: 3px; height: 3px; background: #ff7a2a; box-shadow: 0 0 6px #ff5a10; animation: rise linear infinite; opacity: 0; }
+  @keyframes rise { 10% { opacity: .9; } 80% { opacity: .5; } to { transform: translate(var(--dx), -105vh); opacity: 0; } }
+  @media (max-height: 560px) { #title .desc, #title .keys { display: none; } #title .orn { margin: 10px auto; } #title small { margin-top: 16px; } }
+
+  /* ---------- screens */
+  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--ink); font: 20px/1.6 Georgia, serif; padding: 0 10vw; }
+  #intro { background: radial-gradient(ellipse at 50% 55%, rgba(5,4,7,.55), rgba(5,4,7,.94) 70%); }
+  #intro h1 { font-size: 15px; font-weight: normal; letter-spacing: .7em; color: #8a6a4a; font-variant: small-caps; margin: 0 0 2.2em; opacity: 0; animation: fadeIn 2s .2s forwards; }
+  #intro p { max-width: 640px; margin: .45em 0; opacity: 0; animation: lineIn 2.2s forwards; }
+  #intro p:first-of-type { font-size: 26px; font-style: italic; color: #f0e0c0; }
+  #intro small, .screen small { color: #8a7a5a; margin-top: 2.4em; font-size: 14px; letter-spacing: .15em; opacity: 0; animation: fadeIn 1.5s forwards, blink 2.4s 2s ease-in-out infinite; }
+  @keyframes lineIn { from { opacity: 0; transform: translateY(6px); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
+  @keyframes fadeIn { to { opacity: 1; } }
+  @keyframes blink { 50% { opacity: .45; } }
+  #death { background: radial-gradient(ellipse at center, rgba(40,0,0,.15), rgba(60,0,0,.7)); opacity: 0; transition: opacity 1s .35s; }
+  #death.on { opacity: 1; }
+  #death h1 { font-size: 46px; font-weight: normal; font-variant: small-caps; letter-spacing: .25em; color: #c83a2a; margin: 0; text-shadow: 0 0 16px rgba(200,20,10,.6), 0 3px 8px #000; }
+  #death p { font-style: italic; color: #e0c8a8; margin: .4em 0 0; text-shadow: 0 2px 6px #000; }
+  #end { opacity: 0; transition: opacity 2s; overflow-y: auto; }
+  #end.on { opacity: 1; }
+  #end.walk_home { background: radial-gradient(ellipse at 50% 40%, rgba(70,72,90,.55), rgba(8,8,12,.96) 75%); }
+  #end.new_master { background: radial-gradient(ellipse at 50% 40%, rgba(70,6,6,.6), rgba(6,2,3,.97) 75%); }
+  #end.fall { background: radial-gradient(ellipse at 50% 110%, rgba(150,20,6,.75), rgba(0,0,0,.98) 60%); }
+  #end .over { font-size: 12px; letter-spacing: .6em; color: #7a6a5a; font-variant: small-caps; }
+  #end h1 { font-size: 40px; font-weight: normal; font-variant: small-caps; letter-spacing: .18em; margin: .2em 0 .5em; }
+  #end.walk_home h1 { color: #dfe0ee; text-shadow: 0 0 18px rgba(190,190,255,.4); }
+  #end.new_master h1 { color: #d02a20; text-shadow: 0 0 18px rgba(255,30,10,.5); }
+  #end.fall h1 { color: #ff5a2a; text-shadow: 0 0 22px rgba(255,60,10,.7); }
+  #endText { max-width: 640px; font-style: italic; line-height: 1.6; margin: 0; }
+  #endStats { display: flex; gap: 26px; justify-content: center; margin: 2em 0 1.6em; flex-wrap: wrap; }
+  #endStats div { font-size: 22px; color: #f0e0c0; }
+  #endStats div span { display: block; font-size: 11px; letter-spacing: .25em; color: #8a7a5a; font-variant: small-caps; }
+  #again { font: 17px Georgia, serif; font-variant: small-caps; letter-spacing: .25em; color: #e3d2a8; background: rgba(20,10,10,.6); border: 1px solid #6a4a32; padding: 10px 28px; cursor: pointer; }
+  #again:hover, #again:focus { border-color: #d0803a; color: #fff0d0; outline: none; box-shadow: 0 0 12px rgba(255,120,40,.35); }
+
+  @media (max-width: 900px), (max-height: 520px) { #biome { top: auto; bottom: 68px; font-size: 15px; } }
+  @media (max-width: 700px) {
+    #plate { width: 150px; } #rungName { font-size: 13px; } #msg { font-size: 16px; top: 20%; } #card h2 { font-size: 30px; } #card p { font-size: 16px; }
+    .screen { font-size: 16px; padding: 0 6vw; } #end h1, #death h1 { font-size: 28px; } #boss { top: 92px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="frame"></div>
+<div id="hud">
+  <div id="heartBox"><canvas id="heart" class="px" width="13" height="11"></canvas><div id="hum"></div></div>
+  <div id="plate">
+    <div id="rungName"></div>
+    <div class="bar" id="hpBar"><u></u><i></i><span></span></div>
+    <div id="xpRow"><div id="lvl"></div><div class="bar" id="xpBar"><i></i></div></div>
+  </div>
+</div>
+<div id="biome"></div>
+<div id="ribbon"><canvas id="ribbonCv" class="px" width="36" height="36"></canvas><div id="ribbonWord"></div><small>her trail</small></div>
+<div id="pbtn"></div>
+<div id="coords"></div>
+<div id="debug"></div>
+<div id="boss"><div class="name">Morhain, the Ashen Saint</div><div class="bar" id="bossBar"><u></u><i></i></div></div>
+<div id="slots">
+  <div class="slot locked" data-ab="dash"><canvas class="px" width="12" height="12"></canvas><div class="sweep"></div><div class="cdt"></div><kbd>Q</kbd></div>
+  <div class="slot locked" data-ab="nova"><canvas class="px" width="12" height="12"></canvas><div class="sweep"></div><div class="cdt"></div><kbd>E</kbd></div>
+  <div class="slot locked" data-ab="wrath"><canvas class="px" width="12" height="12"></canvas><div class="sweep"></div><div class="cdt"></div><kbd>R</kbd></div>
+</div>
+<div id="atk"></div>
+<div id="msg"></div>
+<div id="card"><div class="over"></div><h2></h2><div class="rule"></div><p></p></div>
+<div id="levelUp"></div>
+<div id="help">WASD / arrows walk &middot; Shift run &middot; Space/J or click attack &middot; Q dash &middot; E nova &middot; R wrath</div>
+<div id="stick"></div><div id="knob"></div>
+<div id="title" class="screen">
+  <div class="embers"></div>
+  <h1 class="tt">Ashen Wilds</h1>
+  <canvas class="orn px" width="22" height="3"></canvas>
+  <p class="tag">A short dark-fantasy tale of revenge. Every level makes you stronger, and less human.</p>
+  <p class="desc">Find Morhain, the Ashen Saint, by following the signs she left in the dark.<br>Grow strong enough to face him, but not so strong that you fall.<br>Three endings.</p>
+  <div class="keys"><span><b>WASD / arrows</b> walk</span><span><b>Shift</b> run</span><span><b>Space / J / click</b> attack</span><span><b>Q E R</b> powers</span><span><b>Esc / P</b> pause</span></div>
+  <small><span class="press">press any key to begin</span><span class="tap">tap to begin</span></small>
+  <footer>a demo &middot; v0.1</footer>
+</div>
+<div id="intro" class="screen"></div>
+<div id="pause" class="screen"><h1>Paused</h1><dl>
+  <dt>WASD / arrows</dt><dd>walk &middot; Shift runs</dd><dt>Space / J / click</dt><dd>attack</dd>
+  <dt>Q</dt><dd>Shadowstep (dash)</dd><dt>E</dt><dd>Hellfire (nova)</dd><dt>R</dt><dd>Wrath of the Damned</dd>
+  <dt>Esc / P</dt><dd>pause</dd></dl><p id="pauseTrail"></p><small>press Esc or P to return</small></div>
+<div id="death" class="screen"><h1>You fell.</h1><p>The fire remembers you.</p></div>
+<div id="end" class="screen"><div class="over">the end</div><h1 id="endTitle"></h1><p id="endText"></p><div id="endStats"></div><button id="again">Begin again</button></div>
+<script src="src/config.js"></script>
+<script src="src/world.js"></script>
+<script src="src/sim.js"></script>
+<script src="src/bots.js"></script>
+<script src="src/render.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>
