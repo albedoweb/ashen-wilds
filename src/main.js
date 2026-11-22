@@ -21,6 +21,9 @@ const DEBUG = params.get('debug') === '1';
 
 // ---------------------------------------------------------------- game instance
 let game = null, bot = null, botAct = null, tickN = 0;
+// film mode (tools/trailer.mjs): the rAF loop idles; renderFrame(dt) draws exactly one frame on a virtual clock
+let filming = false, filmT = 0;
+const clock = () => filming ? filmT * 1000 : performance.now();
 let acc = 0, apiAction = null, paused = false, speedMul = Math.max(1, Math.min(8, num('speed', 1)));
 const apiQueue = [], botQueue = [];
 let seed = num('seed', 666);
@@ -139,12 +142,12 @@ function card(over, title, text, ominous) {
   const el = $('card');
   el.querySelector('.over').textContent = over || ''; el.querySelector('h2').textContent = title || ''; el.querySelector('p').textContent = text || '';
   el.className = ominous ? 'ominous' : ''; el.style.opacity = 1;
-  clearTimeout(cardTimer); cardTimer = setTimeout(() => { el.style.opacity = 0; }, ominous ? 5500 : 6500);
+  clearTimeout(cardTimer); if (!filming) cardTimer = setTimeout(() => { el.style.opacity = 0; }, ominous ? 5500 : 6500);
 }
 let lvlTimer = null;
 function levelFlourish(level) {
   const el = $('levelUp'); el.textContent = 'Level ' + level; el.style.opacity = 1;
-  clearTimeout(lvlTimer); lvlTimer = setTimeout(() => { el.style.opacity = 0; }, 2400);
+  clearTimeout(lvlTimer); if (!filming) lvlTimer = setTimeout(() => { el.style.opacity = 0; }, 2400);
 }
 
 // ---------------------------------------------------------------- screens
@@ -300,7 +303,7 @@ function drawRibbon(tr, warmth) {
   const box = $('ribbon');
   if (!tr) { if (box.classList.contains('show')) box.classList.remove('show'); return; }
   if (!box.classList.contains('show')) box.classList.add('show');
-  const now = performance.now();
+  const now = clock();
   if (warmth !== ribbon.warmth) {
     if (ribbon.warmth >= 0) { ribbon.flareAt = now; box.classList.remove('flare'); void box.offsetWidth; box.classList.add('flare'); }
     ribbon.warmth = warmth;
@@ -402,6 +405,7 @@ let last = performance.now(), frameN = 0;
 const perf = { frames: 0, drawMs: 0, simMs: 0 };
 function frame(now) {
   requestAnimationFrame(frame); // first, so a renderer error cannot stop the loop
+  if (filming) return;
   const dt = Math.max(0, Math.min(.05, (now - last) / 1000)); last = now;
   const t0 = performance.now();
   if (started && !paused) {
@@ -431,6 +435,18 @@ window.game = {
   get state() { return game.state; },
   // rendering statistics since the last call: frames, mean draw and sim milliseconds per frame
   perf: () => { const r = { frames: perf.frames, drawMs: perf.frames ? +(perf.drawMs / perf.frames).toFixed(3) : 0, simMs: perf.frames ? +(perf.simMs / perf.frames).toFixed(3) : 0 }; perf.frames = perf.drawMs = perf.simMs = 0; return r; },
+  film: on => { filming = !!on; return filming; },
+  // one deterministic frame: renderer, HUD and CSS animations advance by dt seconds of virtual time
+  renderFrame: dt => {
+    filmT += dt;
+    AW.render.draw(game, dt, { debug: false });
+    updateHud(game.observe());
+    for (const a of document.getAnimations()) {
+      if (a._f0 === undefined) { a._f0 = filmT - dt; a._c0 = a.currentTime || 0; a.pause(); }
+      a.currentTime = a._c0 + (filmT - a._f0) * 1000;
+    }
+    return filmT;
+  },
   reset: o => {
     o = o || {};
     makeGame(o.seed !== undefined ? o.seed : seed, Object.assign(urlConfig(), o.config || {}), o.start);

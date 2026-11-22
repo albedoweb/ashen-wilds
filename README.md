@@ -1,5 +1,7 @@
 # Ashen Wilds
 
+![Ashen Wilds gameplay](promo/ashen-wilds-trailer.gif)
+
 A dark-fantasy, top-down revenge tale that runs in the browser. You are the Mourner, and the world around
 you never ends: it is generated on demand from a seed, so every wilderness is new and every place stays the
 same when you come back to it. Morhain, the Ashen Saint, took Ilse on the night of the ash moon. To reach him
